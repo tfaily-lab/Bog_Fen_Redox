@@ -188,9 +188,7 @@ library(mixOmics)
 
 #Extract out just metabolite data to computea  PCA
 rp_control <- rp_final %>%
-  filter(Status == 'Alive') %>%
-  filter(Day %in% c('D0', 'D7', 'D14', 'D28', 'D35')) %>%
-  filter(Treatment == 'unamended')
+  filter(Day %in% c('D0', 'D7', 'D14', 'D28', 'D35'))
 
 X_rp_control <- rp_control %>%
   column_to_rownames('Filename') %>%
@@ -219,9 +217,7 @@ ggplot(rp_pca_data, aes(x, y, color = Day, shape = Site)) +
 ### HILIC -------------------------------------------------------------------
 
 hilic_control <- hilic_final %>%
-  filter(Status == 'Alive') %>%
-  filter(Day %in% c('D0', 'D7', 'D14', 'D28', 'D35')) %>%
-  filter(Treatment == 'unamended')
+  filter(Day %in% c('D0', 'D7', 'D14', 'D28', 'D35')) 
 
 X_hilic_control <- hilic_control %>%
   column_to_rownames('Filename') %>%
@@ -344,8 +340,6 @@ calc_log2fc <- function(x, factor1, factor2, factor1_value, factor2_groups){
 rp_fold <- rp_raw %>%
   rownames_to_column('Filename') %>%
   left_join(meta_rp2) %>%
-  filter(Status == 'Alive') %>%
-  filter(Treatment == 'unamended') %>%
   filter(t_cat %in% c('T0', 'T1', 'T2', 'T3')) %>%
   pivot_longer(cols = starts_with('FT_'), names_to = 'ft', values_to = 'area') %>%
   group_by(ft) %>%
@@ -410,8 +404,6 @@ meta_hilic2 <- meta_hilic %>%
 hilic_fold <- hilic_raw %>%
   rownames_to_column('Filename') %>%
   left_join(meta_hilic2) %>%
-  filter(Status == 'Alive') %>%
-  filter(Treatment == 'unamended') %>%
   filter(t_cat %in% c('T0', 'T1', 'T2', 'T3')) %>%
   pivot_longer(cols = starts_with('FT_'), names_to = 'ft', values_to = 'area') %>%
   group_by(ft) %>%
@@ -476,23 +468,6 @@ plotChemRich_custom(cr_input, colors = c('#3333FF', 'yellow3', '#009900'), sets 
 
 # Figure 1: ---------------------------------------------------------------
 
-nosc_plot <- ggplot(nosc_data, aes(x = unique, y = NOSC, fill = unique)) +
-  geom_violin(trim = F) +
-  geom_boxplot(width = 0.05, fill = 'grey') +
-  scale_fill_manual(values = pal_site_cap, name = NULL) +
-  cowplot::theme_cowplot() +
-  xlab(NULL) +
-  theme(legend.position = c(0.8, 0.9))
-
-dif_plot <- ggplot(comp_plot, aes(y = unique, x = p_class, fill = Class_new)) +
-  geom_col(color = 'black', linewidth = 1) +
-  scale_fill_manual(values = comp_colors, name = 'Class') +
-  cowplot::theme_cowplot() +
-  xlab('Relative Abundance') +
-  scale_x_continuous(labels = scales::label_percent()) +
-  ylab(NULL) +
-  theme(legend.position = 'bottom')
-
 rp_pca_data <- mixOmics::plotIndiv(pca_rp_control)$df %>%
   cbind(meta_rp_control) %>%
   mutate(sxd = paste0(Site, '_', Day)) %>%
@@ -524,75 +499,7 @@ cr_plot <- plotChemRich_custom(cr_input, colors = c('#3333FF','yellow3','#009900
   ylab('—log(p value)') +
   theme(legend.position = c(0.75, 0.9))
 
-classification <- tribble(
-  ~Class, ~OC_low, ~OC_high, ~HC_low, ~HC_high,
-  'Lipid', 0, 0.3, 1.5, 2.5,
-  NULL, 0, 0.125, 0.8, 1.5,
-  'Cond. HC', 0, 0.95, 0.2, 0.8,
-  NULL , 0.3, 0.55, 1.5, 2.3,
-  'Amino sugar', 0.55, 0.7, 1.5, 2.2,
-  'Carbohydrate', 0.7, 1.5, 1.5, 2.5,
-  'Lignin', 0.125, 0.65, 0.8, 1.5,
-  'Tannin', 0.65, 1.1, 0.8, 1.5, 
-) %>% 
-  mutate(label_x = (OC_low + OC_high) / 2,
-         label_y = HC_high - 0.1)
-
-## Compound class rectangles (for plotting of Van Krevelen diagrams) 
-
-class_rect <-  geom_rect(data = classification,
-                         aes(xmin = OC_low,
-                             xmax = OC_high,
-                             ymin = HC_low,
-                             ymax = HC_high),
-                         color = 'black',
-                         fill = NA,
-                         linewidth = 1,
-                         inherit.aes = FALSE, 
-                         linetype = 'dashed')
-rect_label <- geom_label(data = classification,
-                         aes(x = label_x,
-                             y = label_y,
-                             label = Class),
-                         inherit.aes = FALSE,
-                         size = 3)
-
-cont_bog <- ggplot(bog_vk, aes(x = OC, y = HC, color = unique)) + 
-  stat_density_2d(geom = 'polygon', contour = TRUE,
-                  aes(fill = after_stat(level)), colour = 'black') +
-  scale_fill_distiller(palette = "Greens", direction = 1) +
-  labs(x = 'O:C',
-       y = 'H:C') +
-  cowplot::theme_cowplot() +
-  scale_y_continuous(expand = c(0,0), limits = c(0, 2.55)) +
-  scale_x_continuous(expand = c(0,0), limits = c(0, 1.55)) +
-  theme(legend.position = 'none') +
-  class_rect  +
-  rect_label 
-
-cont_fen <- ggplot(fen_vk, aes(x = OC, y = HC, color = unique)) + 
-  stat_density_2d(geom = 'polygon', contour = TRUE,
-                  aes(fill = after_stat(level)), colour = 'black') +
-  scale_fill_distiller(palette = "Blues", direction = 1) +
-  labs(x = 'O:C',
-       y = 'H:C') +
-  cowplot::theme_cowplot() +
-  scale_y_continuous(expand = c(0,0), limits = c(0, 2.55)) +
-  scale_x_continuous(expand = c(0,0), limits = c(0, 1.55)) +
-  theme(legend.position = 'none') +
-  theme(plot.margin = margin(unit(c(5.5, 12.5, 5.5, 0), 'pt'))) +
-  class_rect  +
-  rect_label 
-
-cont_plot <- cowplot::plot_grid(cont_bog, cont_fen, nrow = 1)
-
-p1 <- cowplot::plot_grid(dif_plot, cr_plot, ncol = 1, rel_heights = c(5,10), labels = c('A', 'D'))
-p2 <- cowplot::plot_grid(nosc_plot, pca_plot, align = 'h', axis = 'tb', rel_widths = c(5,8), labels = c('B', 'C'))
-
-p3 <- cowplot::plot_grid(p2, cont_plot, ncol = 1, labels = c('', 'E'), rel_heights = c(5,4))
-cowplot::plot_grid(p1, p3, nrow = 1, rel_widths = c(5,5))  
-
-
+fig_1 <- cowplot::plot_grid(pca_plot, cr_plot, ncol = 2, labels = c('A', 'B'), rel_widths = c(5,8))
 
 # Metatranscriptomics Data Prep: ------------------------------------------
 
@@ -1121,7 +1028,7 @@ tea_tc <- arc_methane %>%
   pivot_wider(names_from = 'path', values_from = 'exp') %>%
   #Summary_stats
   mutate(methane_all = acetometh_exp + hydrometh_exp) %>%
-  mutate(NR_all = DNR_exp + ANR_exp + DeNit_exp) %>%
+  # mutate(NR_all = DNR_exp + ANR_exp + DeNit_exp) %>%
   mutate(SR_all = ASR_exp + DSR_exp)  %>%
   mutate(ferm_all = etOH_exp + AC_exp + but_exp + lac_exp + prop_exp) %>%
   mutate(methox_all = methox_exp) %>%
@@ -1131,7 +1038,7 @@ tea_tc <- arc_methane %>%
   mutate(sox_all =  SOX_exp) %>%
   mutate(nox_all =  Annamox_exp + Nit_exp) %>%
   modify_at('day', factor, levels = c('day0', 'day7', 'day14', 'day21', 'day28', 'day35')) %>%
-  pivot_longer(cols = ends_with('_all'), names_to = 'tea')
+  pivot_longer(cols = c(ends_with('_all'), DNR_exp, ANR_exp, DeNit_exp), names_to = 'tea')
 
 # Figure 3: ---------------------------------------------------------------
 ## Fen ------
@@ -1140,13 +1047,13 @@ tea_tc_fen <- tea_tc %>%
 
 tea_tc_fen_ranged <- tea_tc_fen %>%
   pivot_wider(names_from = 'tea') %>%
-  dplyr::select(sample, ends_with('_all')) %>%
+  dplyr::select(sample, ends_with('_all'), DNR_exp, ANR_exp, DeNit_exp) %>%
   column_to_rownames('sample') %>%
   auto_scale() %>%
   rownames_to_column('sample') %>%
   left_join(metadata) %>%
   modify_at('day', factor, levels = c('day0', 'day7', 'day14', 'day21', 'day28', 'day35')) %>%
-  pivot_longer(cols = ends_with('_all'), names_to = 'tea')
+  pivot_longer(cols = c(ends_with('_all'), DNR_exp, ANR_exp, DeNit_exp), names_to = 'tea')
 
 ggplot(tea_tc_fen_ranged, aes(x = day, y = value, color = tea, group = tea, fill = tea)) +
   geom_smooth(linewidth = 2, se = F)
@@ -1154,21 +1061,29 @@ ggplot(tea_tc_fen_ranged, aes(x = day, y = value, color = tea, group = tea, fill
 ggplot(tea_tc_fen, aes(x = day, y = value, color = tea, group = tea, fill = tea)) +
   geom_smooth(linewidth = 2, se = F)
 
-tea_pal <- c('#EF476F', '#F8961E', '#2176FF', '#F9C80E', '#57C4E5', '#730071', '#08F7B7', '#073B4C', '#D1D646')
-names(tea_pal) <- c('methane_all', 'ferm_all', 'NR_all', 'SR_all', 'nox_all', 'sox_all', 'ox_all', 'methox_all', 'hemi_all')
+tea_pal <- c(
+  '#EF476F', '#F8961E', '#2176FF', '#F9C80E', '#57C4E5', 
+  '#730071', '#08F7B7', '#073B4C', '#D1D646'
+)
+names(tea_pal) <- c(
+  'DNR_exp', 'ANR_exp', 'DeNit_exp', 'SR_all', 
+  'nox_all', 'sox_all', 'ox_all', 'methox_all', 'hemi_all'
+)
 
 #A panel: Nitrate and Sulfate:
 NS_actual_fen <- tea_tc_fen %>%
-  filter(tea %in% c('NR_all', 'SR_all', 'sox_all', 'nox_all')) %>%
-  modify_at('tea', factor, levels = c('NR_all', 'SR_all', 'nox_all', 'sox_all'))
+  filter(tea %in% c('DNR_exp', 'ANR_exp', 'DeNit_exp', 'SR_all', 'sox_all', 'nox_all')) %>%
+  mutate(tea = factor(tea, levels = c('DNR_exp', 'ANR_exp', 'DeNit_exp', 'SR_all', 'nox_all', 'sox_all')))
 
 ns_plot_fen_a <- ggplot(NS_actual_fen, aes(x = day, y = value, color = tea, group = tea, fill = tea)) +
   geom_smooth(linewidth = 2, se = T) +
-  scale_color_manual(values = tea_pal, labels = c('Nitrate Reduction', 'Sulfate Reduction', 
-                                                  'Nitrification', 'Sulfur Oxidation'),
+  scale_color_manual(values = tea_pal, 
+                     labels = c('Dissimilatory NR', 'Assimilatory NR', 'Denitrification',
+                                'Sulfate Reduction', 'Nitrification', 'Sulfur Oxidation'),
                      name = 'Process') +
-  scale_fill_manual(values = tea_pal, labels = c('Nitrate Reduction', 'Sulfate Reduction', 
-                                                 'Nitrification', 'Sulfur Oxidation'),
+  scale_fill_manual(values = tea_pal, 
+                    labels = c('Dissimilatory NR', 'Assimilatory NR', 'Denitrification',
+                               'Sulfate Reduction', 'Nitrification', 'Sulfur Oxidation'),
                     name = 'Process') +
   scale_x_discrete(labels = NULL) +
   #scale_x_discrete(labels = c('Day 0', 'Day 7', 'Day 14', 'Day 21', 'Day 35')) + 
@@ -1178,16 +1093,18 @@ ns_plot_fen_a <- ggplot(NS_actual_fen, aes(x = day, y = value, color = tea, grou
   theme(legend.position = 'none')
 
 NS_ranged_fen <- tea_tc_fen_ranged %>%
-  filter(tea %in% c('NR_all', 'SR_all', 'sox_all', 'nox_all')) %>%
-  modify_at('tea', factor, levels = c('NR_all', 'SR_all', 'nox_all', 'sox_all'))
+  filter(tea %in% c('DNR_exp', 'ANR_exp', 'DeNit_exp', 'SR_all', 'sox_all', 'nox_all')) %>%
+  mutate(tea = factor(tea, levels = c('DNR_exp', 'ANR_exp', 'DeNit_exp', 'SR_all', 'nox_all', 'sox_all')))
 
 ns_plot_fen_r <- ggplot(NS_ranged_fen, aes(x = day, y = value, color = tea, group = tea, fill = tea)) +
   geom_smooth(linewidth = 2, se = F) +
-  scale_color_manual(values = tea_pal, labels = c('Nitrate Reduction', 'Sulfate Reduction', 
-                                                  'Nitrification', 'Sulfur Oxidation'),
+  scale_color_manual(values = tea_pal, 
+                     labels = c('Dissimilatory NR', 'Assimilatory NR', 'Denitrification',
+                                'Sulfate Reduction', 'Nitrification', 'Sulfur Oxidation'),
                      name = 'Process') +
-  scale_fill_manual(values = tea_pal, labels = c('Nitrate Reduction', 'Sulfate Reduction', 
-                                                 'Nitrification', 'Sulfur Oxidation'),
+  scale_fill_manual(values = tea_pal, 
+                    labels = c('Dissimilatory NR', 'Assimilatory NR', 'Denitrification',
+                               'Sulfate Reduction', 'Nitrification', 'Sulfur Oxidation'),
                     name = 'Process') +
   scale_x_discrete(labels = NULL) +
   #scale_x_discrete(labels = c('Day 0', 'Day 7', 'Day 14', 'Day 21', 'Day 35')) +
@@ -1201,6 +1118,9 @@ ns_plot_fen_r_nl <- ns_plot_fen_r +
 
 #B panel: Carbon Processes:
 
+tea_pal <- c('#EF476F', '#F8961E', '#2176FF', '#F9C80E', '#57C4E5', '#730071', '#08F7B7', '#073B4C', '#D1D646')
+names(tea_pal) <- c('methane_all', 'ferm_all', 'NR_all', 'SR_all', 'nox_all', 'sox_all', 'ox_all', 'methox_all', 'hemi_all')                                     
+                                     
 C_actual_fen <- tea_tc_fen %>%
   filter(tea %in% c('ox_all', 'ferm_all', 'hemi_all', 'methane_all', 'methox_all')) %>%
   modify_at('tea', factor, levels = c('ox_all', 'ferm_all', 'hemi_all', 'methane_all', 'methox_all'))
@@ -1752,7 +1672,7 @@ m_plot <- ggplot(lab_df, aes(y = path, x = 10)) +
         legend.position = 'none')
 
 fig2_panelA <- cowplot::plot_grid(g_plot3, m_plot, t_plot3, nrow = 1, axis = 'tblr', align = 'h',
-                                  rel_widths = c(10,1.5,10))
+                                  rel_widths = c(8,2.5,8))
 
 ### Panel B ----
 
@@ -1791,7 +1711,7 @@ cowplot::plot_grid(
   labels = c('A', 'B'),
   label_size = 16,
   label_fontface = "bold",
-  rel_heights = c(1, 1)  # Adjust this to emphasize one plot over another if needed
+  rel_heights = c(1.1, 1)  
 )
 
 
